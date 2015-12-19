@@ -1,0 +1,14 @@
+#!/bin/sh
+# @Author: Antonio Espinosa
+# @Date:   2015-12-19 15:12:48
+# @Last Modified by:   SharkIng
+# @Last Modified time: 2015-12-19 15:41:37
+
+if [ ! $# -eq 1 ]; then
+   echo "Usage: '$0 <subdomain.domain.com>' - This script take exect ONE parameter."
+   exit;
+fi
+
+./generator.sh $1 > $1.process.log
+
+mv $1.process.log $1/logs/
