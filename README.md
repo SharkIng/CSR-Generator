@@ -14,7 +14,7 @@ This script using openssl to generate a 2048 RSA Key and CSR for a domain that n
 
 ### Supported type:
 1. RSA 2048/4096
-2. P-256
+2. ECC / P-256
 3. DSA (From Mr. Espinosa's Script)
 4. Extra: SHA256 Encrypt Key (From Mr. Espinosa's Script)
 
