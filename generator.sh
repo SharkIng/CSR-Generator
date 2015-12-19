@@ -1,8 +1,8 @@
 #!/bin/sh
 # @Author: Antonio Espinosa
 # @Date:   2015-12-19 15:12:48
-# @Last Modified by:   SharkIng
-# @Last Modified time: 2015-12-19 15:54:26
+# @Last Modified by:   David Jiang
+# @Last Modified time: 2015-12-19 18:19:29
 
 
 # Default application location that need to be used
@@ -45,14 +45,19 @@ if [ "$SIGNALG" != 'sha256' ] && [ "$SIGNALG" != 'sha1' ] && [ "$SIGNALG" != 'md
     SIGNALG='sha256'
 fi
 
-if [ "$KEYALG" != 'dsa' ] && [ "$KEYALG" != 'rsa' ]; then
+if [ "$KEYALG" != 'dsa' ] && [ "$KEYALG" != 'rsa' ] && [ "$KEYALG" != 'ecc' ]; then
     echo "NOTICE : Bad key algorithm, using default rsa"
     KEYALG='rsa'
 fi
 
-if [ "$BITS" != '512' ] && [ "$BITS" != '1024' ] && [ "$BITS" != '2048' ] && [ "$BITS" != '4096' ]; then
+if [ "$BITS" != '1024' ] && [ "$BITS" != '2048' ] && [ "$BITS" != '4096' ]; then
     echo "NOTICE : Bad key lenght, using default 2048"
     BITS='2048'
+fi
+
+if [ "$ECCTYPE" != 'prime256v1' ] && [ "$ECCTYPE" != 'secp384r1' ]; then
+    echo "NOTICE : Bad ECC Type, using default prime256v1"
+    ECCTYPE='prime256v1'
 fi
 
 if [ "$KEYALG" == 'dsa' ]; then
@@ -88,10 +93,38 @@ elif [ "$KEYALG" == 'rsa' ]; then
    fi
 fi
 
-echo "Creating CSR..."
-if ! $OPENSSL req -new -key $DOMAIN.key -out $DOMAIN.csr -${SIGNALG} -subj "/C=$COUNTRY/ST=$STATE/L=$LOCATION/O=$ORG/OU=$ORGUNIT/CN=$DOMAIN"; then
-   echo "ERROR : Generating csr failed."
-   exit;
+elif [ "$KEYALG" == 'ecc' ]; then
+
+   echo "Creating RSA Key..."
+   if ! $OPENSSL ecparam -genkey -name $ECCTYPE -out $DOMAIN.ecc.key; then
+      echo "ERROR : Generating key failed."
+      exit;
+   fi
+   echo "Not going to Encrypt ECC Key with any method... Continued.."
+fi
+
+# DigiCert Script
+# $OPENSSL req -new -newkey rsa:2048 -nodes -out $DOMAIN.csr -keyout $DOMAIN.key -subj "/C=$COUNTRY/ST=$STATE/L=$LOCATION/O=$ORG/OU=$ORGUNIT/CN=$DOMAIN"
+
+# Generate CSR
+if [ "$KEYALG" == 'ecc' ]; then
+    
+   echo "Creating CSR..."
+   if ! $OPENSSL req -new -key $DOMAIN.key -out $DOMAIN.csr -${SIGNALG} -subj "/C=$COUNTRY/ST=$STATE/L=$LOCATION/O=$ORG/OU=$ORGUNIT/CN=$DOMAIN"; then
+      echo "ERROR : Generating csr failed."
+      exit;
+   fi
+
+fi
+
+elif [ "" == 'rsa' ]; then
+   
+   echo "Creating CSR..."
+   if ! $OPENSSL req -new -key $DOMAIN.ecc.key -out $DOMAIN.csr -${SIGNALG} -subj "/C=$COUNTRY/ST=$STATE/L=$LOCATION/O=$ORG/OU=$ORGUNIT/CN=$DOMAIN"; then
+      echo "ERROR : Generating csr failed."
+      exit;
+   fi
+   
 fi
 
 echo "OK - Certificate CSR created successfully"
