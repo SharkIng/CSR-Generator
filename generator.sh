@@ -2,7 +2,7 @@
 # @Author: Antonio Espinosa
 # @Date:   2015-12-19 15:12:48
 # @Last Modified by:   David Jiang
-# @Last Modified time: 2015-12-19 18:19:29
+# @Last Modified time: 2015-12-19 18:36:20
 
 
 # Default application location that need to be used
@@ -40,7 +40,7 @@ if [ -z "$ORGUNIT" ]; then echo "ERROR : Organization unit not set"; exit; fi
 # Start CSR Generate Process
 DOMAIN=$1
 
-if [ "$SIGNALG" != 'sha256' ] && [ "$SIGNALG" != 'sha1' ] && [ "$SIGNALG" != 'md5' ]; then
+if [ "$SIGNALG" != 'sha256' ] && [ "$SIGNALG" != 'sha384' ]; then
     echo "NOTICE : Bad signature algorithm, using default sha256"
     SIGNALG='sha256'
 fi
@@ -50,7 +50,7 @@ if [ "$KEYALG" != 'dsa' ] && [ "$KEYALG" != 'rsa' ] && [ "$KEYALG" != 'ecc' ]; t
     KEYALG='rsa'
 fi
 
-if [ "$BITS" != '1024' ] && [ "$BITS" != '2048' ] && [ "$BITS" != '4096' ]; then
+if [ "$BITS" != '2048' ] && [ "$BITS" != '4096' ]; then
     echo "NOTICE : Bad key lenght, using default 2048"
     BITS='2048'
 fi
@@ -73,11 +73,6 @@ if [ "$KEYALG" == 'dsa' ]; then
       echo "ERROR : Generating key failed."
       exit;
    fi
-   echo "Encrypt DSA Key with AES 256 CBC..."
-   if ! $OPENSSL dsa -aes256 -in $DOMAIN.key -out $DOMAIN.key.enc; then
-      echo "ERROR : Encrypting key failed."
-      exit;
-   fi
 
 elif [ "$KEYALG" == 'rsa' ]; then
 
@@ -86,12 +81,6 @@ elif [ "$KEYALG" == 'rsa' ]; then
       echo "ERROR : Generating key failed."
       exit;
    fi
-   echo "Encrypt RSA Key with AES 256 CBC..."
-   if ! $OPENSSL rsa -aes256 -in $DOMAIN.key -out $DOMAIN.key.enc; then
-      echo "ERROR : Encrypting key failed."
-      exit;
-   fi
-fi
 
 elif [ "$KEYALG" == 'ecc' ]; then
 
@@ -100,14 +89,12 @@ elif [ "$KEYALG" == 'ecc' ]; then
       echo "ERROR : Generating key failed."
       exit;
    fi
-   echo "Not going to Encrypt ECC Key with any method... Continued.."
+
 fi
 
-# DigiCert Script
-# $OPENSSL req -new -newkey rsa:2048 -nodes -out $DOMAIN.csr -keyout $DOMAIN.key -subj "/C=$COUNTRY/ST=$STATE/L=$LOCATION/O=$ORG/OU=$ORGUNIT/CN=$DOMAIN"
 
 # Generate CSR
-if [ "$KEYALG" == 'ecc' ]; then
+if [ "$KEYALG" == 'rsa' ]; then
     
    echo "Creating CSR..."
    if ! $OPENSSL req -new -key $DOMAIN.key -out $DOMAIN.csr -${SIGNALG} -subj "/C=$COUNTRY/ST=$STATE/L=$LOCATION/O=$ORG/OU=$ORGUNIT/CN=$DOMAIN"; then
@@ -115,16 +102,14 @@ if [ "$KEYALG" == 'ecc' ]; then
       exit;
    fi
 
-fi
-
-elif [ "" == 'rsa' ]; then
+elif [ "$KEYALG" == 'ecc' ]; then
    
    echo "Creating CSR..."
    if ! $OPENSSL req -new -key $DOMAIN.ecc.key -out $DOMAIN.csr -${SIGNALG} -subj "/C=$COUNTRY/ST=$STATE/L=$LOCATION/O=$ORG/OU=$ORGUNIT/CN=$DOMAIN"; then
       echo "ERROR : Generating csr failed."
       exit;
    fi
-   
+
 fi
 
 echo "OK - Certificate CSR created successfully"
@@ -135,14 +120,14 @@ echo "Please see DOMAIN.verify.log for detail verification information."
 echo "Clean up...."
 mkdir $DOMAIN
 mv $DOMAIN.csr $DOMAIN/
-mv $DOMAIN.key.enc $DOMAIN/
-mv $DOMAIN.key $DOMAIN/
+if [ "$KEYALG" == 'rsa' ]; then
+   mv $DOMAIN.key $DOMAIN/
+
+elif [ "$KEYALG" == 'ecc' ]; then
+   mv $DOMAIN.ecc.key $DOMAIN/
+fi
 
 mkdir $DOMAIN/logs
 mv $DOMAIN.verify.log $DOMAIN/logs/
 
-echo
-echo "In order to decrypt private key in destination server, execute:"
-echo "# openssl $KEYALG -in $DOMAIN.key.enc -out $DOMAIN.key"
-echo
-echo "The passphrase will be requested, so keep it in mind ;)"
+echo "Successfully!!"
