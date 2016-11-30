@@ -1,4 +1,5 @@
 # CSR Generator - Domain SSL Sign Request .csr generator
+***INCOMPLETED AND NOT WORKING***
 
 
 ## FIRSTLY
